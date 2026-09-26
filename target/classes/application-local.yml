@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/malimall
+    username: malimall_app
+    password: malimall_app
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.malimall.backend: DEBUG
+    org.hibernate.SQL: DEBUG
+
+# Pour activer l'upload de photos en local, définissez ces 2 variables
+# d'environnement AVANT de lancer l'app (ne jamais les écrire en dur ici) :
+#   SUPABASE_URL=https://<votre-ref>.supabase.co
+#   SUPABASE_SERVICE_KEY=<clé "service_role" du projet, Dashboard > Project Settings > API>
+# Étapes de création du bucket : voir README.md, section "Photos (Supabase Storage)".
+
+# Le tracé routier réel des courses MotoTaxi (carte MotoTaxi) fonctionne
+# SANS RIEN CONFIGURER : DirectionsService interroge OSRM (moteur de
+# routage gratuit, sans clé). Si "Directions ne marche pas" malgré tout,
+# c'est presque toujours parce que le backend (votre PC) n'a pas d'accès
+# internet sortant vers router.project-osrm.org — vérifiez ce point en
+# premier (pare-feu, proxy d'entreprise, etc.), pas la clé Google.
+#
+# GOOGLE_MAPS_API_KEY reste optionnelle : elle ne sert que de solution de
+# secours si OSRM échoue, et ne change rien si OSRM répond déjà. Si vous
+# voulez quand même l'essayer un jour, définissez-la comme variable
+# d'environnement AVANT de lancer l'app (ne jamais l'écrire en dur ici) :
+#   GOOGLE_MAPS_API_KEY=<clé Google Cloud avec "Directions API" ACTIVÉE ET LA FACTURATION ACTIVÉE>
+# Cette clé est appelée côté serveur, PAS depuis le téléphone : la clé
+# utilisée par android/local.properties (MAPS_API_KEY) pour AFFICHER la
+# carte est presque toujours restreinte à l'app Android (nom de package +
+# empreinte SHA-1) et NE PEUT PAS être réutilisée ici — Google la refusera
+# avec REQUEST_DENIED. Il faut une clé SÉPARÉE, dans le même projet Google
+# Cloud, sans restriction Android (ou restreinte par adresse IP), avec
+# Directions API activée ET la facturation du projet activée (Directions API
+# ne répond jamais sans ça, même avec une clé par ailleurs valide).

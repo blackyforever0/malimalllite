@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: malimall-backend
+  profiles:
+    active: local
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+server:
+  port: 8080
+
+malimall:
+  jwt:
+    secret: ${MALIMALL_JWT_SECRET:changeme-dev-only-secret-key-please-override-32bytes+}
+    expiration-minutes: 120
+  commission:
+    taux: 0.08
+  livraison:
+    frais-fixe-mmc: 300
+  plateforme:
+    telephone: "+000000000"
+  # Photos produits/boutiques (Supabase Storage). Laissés vides ici volontairement : sans ces deux valeurs,
+  # SupabaseStorageService reste inactif et /api/produits/{id}/photo renvoie 503
+  # au lieu de planter le démarrage. Voir application-local.yml pour les
+  # renseigner en local, jamais dans ce fichier commis au dépôt.
+  supabase:
+    url: ${SUPABASE_URL:}
+    service-key: ${SUPABASE_SERVICE_KEY:}
+    bucket: ${SUPABASE_STORAGE_BUCKET:malimall-media}
+  # Itinéraire réel des courses MotoTaxi (DirectionsService) : par défaut,
+  # AUCUNE clé n'est nécessaire — le service interroge d'abord OSRM (moteur de
+  # routage gratuit, sans clé, serveur de démonstration public), qui suffit
+  # largement pour la soutenance. Cette clé Google reste optionnelle, comme
+  # solution de secours seulement si OSRM échoue (réseau, etc.) — voir
+  # application-local.yml pour la renseigner si besoin.
+  google:
+    maps-api-key: ${GOOGLE_MAPS_API_KEY:}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

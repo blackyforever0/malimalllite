@@ -1,0 +1,26 @@
+# Profil "test" : base H2 en mémoire, schéma généré directement depuis les
+# entités JPA (Hibernate ddl-auto=create-drop). Flyway est désactivé ici
+# volontairement : le but de ces tests est de figer le comportement métier
+# (mapping JPA + services), pas de rejouer les scripts SQL de V1__init.sql /
+# V2__seed_demo_data.sql — ceux-ci ont déjà été validés pour de vrai par
+# l'utilisateur contre une vraie base PostgreSQL locale. Résultat : `mvn test`
+# tourne sans PostgreSQL ni Docker installés.
+spring:
+  datasource:
+    url: jdbc:h2:mem:malimall_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    com.malimall.backend: INFO
+    org.hibernate.SQL: WARN

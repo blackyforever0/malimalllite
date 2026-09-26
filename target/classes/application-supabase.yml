@@ -1,0 +1,15 @@
+# Profil activé pour pointer vers le projet Supabase réel.
+# Ne JAMAIS committer d'identifiants ici : tout vient de variables d'environnement.
+# Lancer avec : SPRING_PROFILES_ACTIVE=supabase (en plus de "local" retiré) ou
+# en remplaçant "local" par "supabase" dans SPRING_PROFILES_ACTIVE.
+spring:
+  datasource:
+    url: ${SUPABASE_JDBC_URL}         # ex: jdbc:postgresql://db.<ref>.supabase.co:5432/postgres
+    username: ${SUPABASE_DB_USER}
+    password: ${SUPABASE_DB_PASSWORD}
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.malimall.backend: INFO

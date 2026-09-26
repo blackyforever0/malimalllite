@@ -1,0 +1,11 @@
+package com.malimall.backend.repository;
+
+import com.malimall.backend.entity.Produit;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface ProduitRepository extends JpaRepository<Produit, Long> {
+    List<Produit> findByBoutiqueId(Long boutiqueId);
+    List<Produit> findByActifTrue();
+}
