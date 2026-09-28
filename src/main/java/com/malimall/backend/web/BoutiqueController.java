@@ -69,4 +69,18 @@ public class BoutiqueController {
         var boutique = boutiqueService.televerserPhoto(principal.getId(), id, fichier);
         return ResponseEntity.ok(BoutiqueMapper.toResponse(boutique));
     }
+
+    /**
+     * Réservé au vendeur propriétaire — voir BoutiqueService.mettreAJourPosition.
+     * Appelé quand le vendeur appuie sur "Position GPS — appuyez pour
+     * actualiser" dans "Ma boutique".
+     */
+    @PreAuthorize("hasRole('VENDEUR')")
+    @PutMapping("/{id}/position")
+    public ResponseEntity<BoutiqueResponse> mettreAJourPosition(@AuthenticationPrincipal UserPrincipal principal,
+                                                                  @PathVariable Long id,
+                                                                  @Valid @RequestBody PositionRequest req) {
+        var boutique = boutiqueService.mettreAJourPosition(principal.getId(), id, req.latitude(), req.longitude());
+        return ResponseEntity.ok(BoutiqueMapper.toResponse(boutique));
+    }
 }

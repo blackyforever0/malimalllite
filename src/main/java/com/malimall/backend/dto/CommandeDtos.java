@@ -66,10 +66,14 @@ public class CommandeDtos {
             Instant dateRetrait,
             Integer noteLivreur,
             boolean signalee,
+            /** true : le client vient chercher lui-même sa commande chez le vendeur (pas de livreur). */
+            boolean retraitParClient,
             /** Point de livraison exact choisi par l'acheteur (facultatif). */
             Double livraisonLatitude,
             Double livraisonLongitude,
             /** Position en direct du livreur pendant la livraison, pour l'acheteur et le vendeur. */
-            com.malimall.backend.dto.PositionDto chauffeurPosition
+            com.malimall.backend.dto.PositionDto chauffeurPosition,
+            /** Position GPS enregistrée par le vendeur, pour que le livreur retrouve la boutique. */
+            com.malimall.backend.dto.PositionDto boutiquePosition
     ) {}
 }

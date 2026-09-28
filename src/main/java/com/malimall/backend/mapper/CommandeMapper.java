@@ -35,7 +35,10 @@ public final class CommandeMapper {
         boolean estVendeurProprietaire = commande.getBoutique().getProprietaire()
                 .getUtilisateur().getId().equals(viewerUtilisateurId);
 
-        String codeRetrait = (viewerEstAdmin || estVendeurProprietaire) ? commande.getCodeRetrait() : null;
+        // En retrait sur place, c'est le CLIENT qui présente le code retrait au vendeur (pas de
+        // livreur) : il doit donc le voir lui aussi, contrairement au circuit avec livreur normal.
+        String codeRetrait = (viewerEstAdmin || estVendeurProprietaire
+                || (commande.isRetraitParClient() && estAcheteur)) ? commande.getCodeRetrait() : null;
 
         boolean colisRecupere = commande.getStatutLivraison() == StatutLivraison.RECUPEREE
                 || commande.getStatutLivraison() == StatutLivraison.EN_ROUTE
@@ -89,9 +92,11 @@ public final class CommandeMapper {
                 commande.getDateRetrait(),
                 commande.getNoteLivreur(),
                 commande.isSignalee(),
+                commande.isRetraitParClient(),
                 commande.getLivraisonLatitude(),
                 commande.getLivraisonLongitude(),
-                positionLivreur);
+                positionLivreur,
+                PositionDto.deLaBoutique(commande.getBoutique()));
     }
 
     /** "Ibrahim Diarra" -> "Ibrahim D." */

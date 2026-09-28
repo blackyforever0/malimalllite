@@ -160,6 +160,59 @@ public class LivraisonService {
         return CommandeMapper.toResponse(commande, acheteurUtilisateurId, false);
     }
 
+    /**
+     * Retrait sur place (Commande.retraitParClient) : le vendeur valide le
+     * code que le CLIENT lui présente en venant chercher sa commande —
+     * aucun livreur, donc aucune part livreur dans le règlement (frais de
+     * livraison déjà à 0 depuis PanierService.validerPanier). Miroir de
+     * confirmerLivraison, mais déclenché par le vendeur et sans chauffeur.
+     */
+    @Transactional
+    public CommandeResponse confirmerRetraitClient(Long commandeId, Long vendeurUtilisateurId, String code) {
+        Commande commande = charger(commandeId);
+        if (!commande.isRetraitParClient()) {
+            throw new TransitionStatutInvalideException("Cette commande n'est pas en retrait sur place");
+        }
+        if (!commande.getBoutique().getProprietaire().getUtilisateur().getId().equals(vendeurUtilisateurId)) {
+            throw new AccesRefuseException("Cette commande ne concerne pas votre boutique");
+        }
+        if (commande.getStatut() == StatutCommande.LIVREE) {
+            return CommandeMapper.toResponse(commande, vendeurUtilisateurId, false);
+        }
+        if (commande.getStatut() == StatutCommande.ANNULEE) {
+            throw new TransitionStatutInvalideException("Cette commande a été annulée");
+        }
+        if (commande.isSignalee()) {
+            throw new TransitionStatutInvalideException(
+                    "Un signalement est en cours sur cette commande : les fonds restent bloqués jusqu'à son traitement");
+        }
+        if (!commande.getCodeRetrait().equals(code)) {
+            throw new CodeInvalideException("Code de retrait invalide");
+        }
+
+        Long acheteurId = commande.getAcheteur().getId();
+        Long vendeurUtilisateurIdReel = commande.getBoutique().getProprietaire().getUtilisateur().getId();
+        Long plateformeUtilisateurId = plateformeUtilisateurId();
+
+        // fraisLivraisonMmc vaut toujours 0 en retrait sur place : le split ne rémunère donc que le
+        // vendeur (et la commission plateforme), jamais de part livreur.
+        CommissionSplit split = commissionCalculator.splitLivraisonNormale(
+                commande.getMontantTotalMmc(), commande.getFraisLivraisonMmc());
+
+        portefeuilleService.debiter(acheteurId, commande.montantTotalAvecLivraison());
+        portefeuilleService.crediter(vendeurUtilisateurIdReel, split.sellerReceives());
+        portefeuilleService.crediter(plateformeUtilisateurId, split.platformCommission());
+
+        ecrire(vendeurUtilisateurIdReel, TypeOperation.VENTE, split.sellerReceives(), commande.getId());
+        ecrire(plateformeUtilisateurId, TypeOperation.COMMISSION, split.platformCommission(), commande.getId());
+
+        commande.setStatut(StatutCommande.LIVREE);
+        commande.setDateRetrait(Instant.now());
+        commande.setDateLivraison(Instant.now());
+        commande = commandeRepository.save(commande);
+        return CommandeMapper.toResponse(commande, vendeurUtilisateurId, false);
+    }
+
     /** L'acheteur note son livreur (1 à 5) une fois la commande livrée — une seule fois. */
     @Transactional
     public CommandeResponse noterLivreur(Long commandeId, Long acheteurUtilisateurId, int note) {

@@ -5,6 +5,7 @@ import com.malimall.backend.dto.CommandeDtos.CommandeResponse;
 import com.malimall.backend.dto.PanierDtos.PanierResponse;
 import com.malimall.backend.entity.*;
 import com.malimall.backend.entity.enums.StatutCommande;
+import com.malimall.backend.entity.enums.StatutLivraison;
 import com.malimall.backend.exception.RessourceIntrouvableException;
 import com.malimall.backend.mapper.CommandeMapper;
 import com.malimall.backend.mapper.PanierMapper;
@@ -136,6 +137,19 @@ public class PanierService {
     @Transactional
     public List<CommandeResponse> validerPanier(Long utilisateurId, String adresseLivraison,
                                                 Double latitude, Double longitude) {
+        return validerPanier(utilisateurId, adresseLivraison, latitude, longitude, false);
+    }
+
+    /**
+     * @param retraitParClient si vrai : le client vient chercher lui-même sa
+     *                         commande chez le vendeur — pas de frais de
+     *                         livraison, pas de livreur jamais assigné, et
+     *                         codeRetrait est montré au client (voir
+     *                         CommandeMapper) plutôt qu'à un livreur.
+     */
+    @Transactional
+    public List<CommandeResponse> validerPanier(Long utilisateurId, String adresseLivraison,
+                                                Double latitude, Double longitude, boolean retraitParClient) {
         if ((latitude == null) != (longitude == null)
                 || (latitude != null && (Math.abs(latitude) > 90 || Math.abs(longitude) > 180))) {
             throw new IllegalArgumentException("Position de livraison invalide");
@@ -160,12 +174,16 @@ public class PanierService {
                 .collect(Collectors.groupingBy(l -> l.getProduit().getBoutique()));
 
         Utilisateur acheteur = panier.getClient().getUtilisateur();
-        int fraisLivraison = properties.livraison().fraisFixeMmc();
-        // Adresse saisie, sinon l'adresse par défaut du client (puis mémorisée pour la prochaine fois).
-        String adresse = adresseLivraison != null && !adresseLivraison.isBlank()
-                ? adresseLivraison.trim()
-                : panier.getClient().getAdresseLivraisonDefaut();
-        if (adresse != null) {
+        // Retrait sur place : aucun livreur, donc aucun frais de livraison à payer.
+        int fraisLivraison = retraitParClient ? 0 : properties.livraison().fraisFixeMmc();
+        // Adresse saisie, sinon l'adresse par défaut du client (puis mémorisée pour la prochaine fois) —
+        // non applicable en retrait sur place.
+        String adresse = retraitParClient
+                ? null
+                : (adresseLivraison != null && !adresseLivraison.isBlank()
+                        ? adresseLivraison.trim()
+                        : panier.getClient().getAdresseLivraisonDefaut());
+        if (!retraitParClient && adresse != null) {
             panier.getClient().setAdresseLivraisonDefaut(adresse);
         }
 
@@ -182,10 +200,14 @@ public class PanierService {
                     .fraisLivraisonMmc(fraisLivraison)
                     .statut(StatutCommande.CONFIRMEE)
                     .codeRetrait(genererCode())
-                    .codeLivraison(genererCode())
+                    // Pas de second code : en retrait sur place il n'y a qu'une seule remise (vendeur -> client).
+                    .codeLivraison(retraitParClient ? null : genererCode())
                     .adresseLivraison(adresse)
-                    .livraisonLatitude(latitude)
-                    .livraisonLongitude(longitude)
+                    .livraisonLatitude(retraitParClient ? null : latitude)
+                    .livraisonLongitude(retraitParClient ? null : longitude)
+                    // Reste null (jamais EN_ATTENTE_LIVREUR) : aucun livreur ne doit voir/prendre cette commande.
+                    .statutLivraison(retraitParClient ? null : StatutLivraison.EN_ATTENTE_LIVREUR)
+                    .retraitParClient(retraitParClient)
                     .build();
             commande = commandeRepository.save(commande);
 

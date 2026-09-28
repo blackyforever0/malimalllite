@@ -88,4 +88,16 @@ public class CommandeController {
                                                 @Valid @RequestBody ScannerCodeRequest req) {
         return livraisonService.confirmerLivraison(id, principal.getId(), req.code());
     }
+
+    /**
+     * Retrait sur place (Commande.retraitParClient) : le vendeur valide le
+     * code que le client lui présente en venant chercher sa commande.
+     */
+    @PreAuthorize("hasRole('VENDEUR')")
+    @PostMapping("/{id}/confirmer-retrait-client")
+    public CommandeResponse confirmerRetraitClient(@AuthenticationPrincipal UserPrincipal principal,
+                                                    @PathVariable Long id,
+                                                    @Valid @RequestBody ScannerCodeRequest req) {
+        return livraisonService.confirmerRetraitClient(id, principal.getId(), req.code());
+    }
 }

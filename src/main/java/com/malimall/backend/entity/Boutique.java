@@ -56,4 +56,16 @@ public class Boutique {
     @Column(name = "date_creation", nullable = false, updatable = false)
     @Builder.Default
     private Instant dateCreation = Instant.now();
+
+    /**
+     * Position GPS enregistrée par le vendeur (bouton "Ma boutique" — même
+     * principe que Chauffeur.latitude/longitude/positionMaj), pour que les
+     * livreurs sachent où récupérer les colis chez lui.
+     */
+    private Double latitude;
+
+    private Double longitude;
+
+    @Column(name = "position_maj")
+    private Instant positionMaj;
 }

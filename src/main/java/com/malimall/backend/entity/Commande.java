@@ -109,6 +109,17 @@ public class Commande {
     @Builder.Default
     private boolean signalee = false;
 
+    /**
+     * Le client vient récupérer lui-même sa commande chez le vendeur — aucun
+     * livreur n'est jamais assigné (statutLivraison reste null), pas de frais
+     * de livraison, et codeRetrait est montré au CLIENT (qui le présente au
+     * vendeur), plutôt qu'au vendeur seul comme dans le circuit livreur — voir
+     * CommandeMapper.
+     */
+    @Column(name = "retrait_par_client", nullable = false)
+    @Builder.Default
+    private boolean retraitParClient = false;
+
     @Transient
     public int montantTotalAvecLivraison() {
         return montantTotalMmc + fraisLivraisonMmc;

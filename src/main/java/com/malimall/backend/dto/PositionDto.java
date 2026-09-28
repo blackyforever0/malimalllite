@@ -1,11 +1,12 @@
 package com.malimall.backend.dto;
 
+import com.malimall.backend.entity.Boutique;
 import com.malimall.backend.entity.Chauffeur;
 
 import java.time.Duration;
 import java.time.Instant;
 
-/** Position GPS d'un chauffeur et date de sa dernière mise à jour. */
+/** Position GPS d'un chauffeur (ou d'une boutique) et date de sa dernière mise à jour. */
 public record PositionDto(double latitude, double longitude, Instant maj) {
 
     /** Au-delà, la position n'est plus montrée : elle ne reflète plus la réalité. */
@@ -19,5 +20,19 @@ public record PositionDto(double latitude, double longitude, Instant maj) {
             return null;
         }
         return new PositionDto(chauffeur.getLatitude(), chauffeur.getLongitude(), chauffeur.getPositionMaj());
+    }
+
+    /**
+     * Position de la boutique, sans limite de fraîcheur : contrairement au
+     * chauffeur (mobile, en direct), une boutique a une adresse fixe — la
+     * position reste valable tant que le vendeur ne l'a pas explicitement
+     * mise à jour (bouton "appuyez pour actualiser").
+     */
+    public static PositionDto deLaBoutique(Boutique boutique) {
+        if (boutique == null || boutique.getLatitude() == null || boutique.getLongitude() == null
+                || boutique.getPositionMaj() == null) {
+            return null;
+        }
+        return new PositionDto(boutique.getLatitude(), boutique.getLongitude(), boutique.getPositionMaj());
     }
 }

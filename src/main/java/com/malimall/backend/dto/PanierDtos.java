@@ -29,7 +29,9 @@ public class PanierDtos {
             @Size(max = 150) String adresseLivraison,
             /** Point exact sur la carte (facultatif). */
             Double latitude,
-            Double longitude
+            Double longitude,
+            /** true : le client vient chercher lui-même sa commande chez le vendeur (pas de livreur). */
+            boolean retraitParClient
     ) {}
 
     public record PanierResponse(

@@ -1,0 +1,37 @@
+# Blueprint Render — quand tu connectes ce dépôt sur render.com et choisis
+# "New +" > "Blueprint", Render lit ce fichier et pré-remplit le service à
+# créer (rien à configurer à la main, sauf les 5 variables marquées
+# "sync: false" ci-dessous, que Render te demandera de saisir toi-même dans
+# son interface au moment de la création — ce sont tes identifiants Supabase,
+# jamais commités dans le dépôt).
+services:
+  - type: web
+    name: malimall-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /swagger-ui.html
+    envVars:
+      # Active le profil qui pointe vers Supabase (voir application-supabase.yml)
+      # plutôt que "local" (Postgres sur ta machine, injoignable depuis Render).
+      - key: SPRING_PROFILES_ACTIVE
+        value: supabase
+      # Secret de signature JWT — généré automatiquement et gardé par Render,
+      # jamais affiché ni committé (remplace le "changeme-dev-only..." par défaut).
+      - key: MALIMALL_JWT_SECRET
+        generateValue: true
+      # --- À saisir toi-même dans l'interface Render (Dashboard > Environment) ---
+      # Valeurs à copier depuis ton projet Supabase (voir backend/README.md,
+      # section "Configurer Supabase depuis zéro") :
+      - key: SUPABASE_JDBC_URL
+        sync: false
+      - key: SUPABASE_DB_USER
+        sync: false
+      - key: SUPABASE_DB_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: malimall-media

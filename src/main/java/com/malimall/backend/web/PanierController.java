@@ -52,6 +52,6 @@ public class PanierController {
             return ResponseEntity.ok(panierService.validerPanier(principal.getId(), null));
         }
         return ResponseEntity.ok(panierService.validerPanier(
-                principal.getId(), req.adresseLivraison(), req.latitude(), req.longitude()));
+                principal.getId(), req.adresseLivraison(), req.latitude(), req.longitude(), req.retraitParClient()));
     }
 }

@@ -65,4 +65,27 @@ public class BoutiqueService {
         boutique.setImageUrl(url);
         return boutiqueRepository.save(boutique);
     }
+
+    /**
+     * Enregistre/actualise la position GPS de la boutique (bouton "Position
+     * GPS enregistrée — appuyez pour actualiser" côté "Ma boutique") : permet
+     * aux livreurs de retrouver le vendeur pour récupérer un colis, s'ils
+     * acceptent la livraison.
+     */
+    @Transactional
+    public Boutique mettreAJourPosition(Long utilisateurId, Long boutiqueId, double latitude, double longitude) {
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+            throw new IllegalArgumentException("Position GPS invalide");
+        }
+        Boutique boutique = obtenir(boutiqueId);
+        Vendeur vendeur = vendeurRepository.findByUtilisateurId(utilisateurId)
+                .orElseThrow(() -> new IllegalStateException("Il faut être vendeur pour modifier une boutique"));
+        if (!boutique.getProprietaire().getId().equals(vendeur.getId())) {
+            throw new AccesRefuseException("Cette boutique ne vous appartient pas");
+        }
+        boutique.setLatitude(latitude);
+        boutique.setLongitude(longitude);
+        boutique.setPositionMaj(java.time.Instant.now());
+        return boutiqueRepository.save(boutique);
+    }
 }

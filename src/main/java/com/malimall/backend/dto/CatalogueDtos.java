@@ -1,6 +1,7 @@
 package com.malimall.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
@@ -23,8 +24,12 @@ public class CatalogueDtos {
             boolean certifiee,
             Long proprietaireId,
             String imageUrl,
-            String quartier
+            String quartier,
+            PositionDto position
     ) {}
+
+    /** Corps de PUT /api/boutiques/{id}/position — voir BoutiqueService.mettreAJourPosition. */
+    public record PositionRequest(@NotNull Double latitude, @NotNull Double longitude) {}
 
     public record ProduitRequest(
             @NotBlank String nom,
