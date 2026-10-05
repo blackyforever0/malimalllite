@@ -61,15 +61,20 @@ public class SecurityConfig {
     }
 
     /**
-     * Autorise le serveur de développement Angular (console d'administration
-     * web) à appeler cette API depuis un navigateur — sans ça, le navigateur
-     * bloque toute requête localhost:4200 -&gt; localhost:8080 avant même
-     * qu'elle atteigne Spring Security.
+     * Autorise la console d'administration Angular à appeler cette API
+     * depuis un navigateur — sans ça, le navigateur bloque toute requête
+     * avant même qu'elle atteigne Spring Security.
+     *
+     * "http://localhost:*" couvre le dev local (ng serve), et
+     * "https://*.vercel.app" couvre l'admin déployé sur Vercel — y compris
+     * les URLs de preview que Vercel génère à chaque déploiement
+     * (ex. malimall-admin-git-xxx.vercel.app), pas seulement le domaine de
+     * production.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:*"));
+        config.setAllowedOriginPatterns(List.of("http://localhost:*", "https://*.vercel.app"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

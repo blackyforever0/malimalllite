@@ -19,7 +19,11 @@ spring:
       max-request-size: 6MB
 
 server:
-  port: 8080
+  # ${PORT:8080} : Render (et la plupart des hébergeurs) imposent leur propre
+  # port via la variable d'environnement PORT — le service ne démarre pas
+  # correctement sinon. En local, PORT n'existe pas, donc on retombe sur 8080
+  # comme avant : aucun changement pour mvn spring-boot:run.
+  port: ${PORT:8080}
 
 malimall:
   jwt:
