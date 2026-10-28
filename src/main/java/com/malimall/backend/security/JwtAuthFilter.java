@@ -22,10 +22,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UtilisateurRepository utilisateurRepository;
+    private final CustomUserDetailsService userDetailsService;
 
-    public JwtAuthFilter(JwtService jwtService, UtilisateurRepository utilisateurRepository) {
+    public JwtAuthFilter(JwtService jwtService, UtilisateurRepository utilisateurRepository,
+                         CustomUserDetailsService userDetailsService) {
         this.jwtService = jwtService;
         this.utilisateurRepository = utilisateurRepository;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
@@ -41,12 +44,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = header.substring(7);
         if (jwtService.estValide(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
             Long utilisateurId = jwtService.extraireUtilisateurId(token);
-            List<String> roles = jwtService.extraireRoles(token);
             Optional<Utilisateur> utilisateur = utilisateurRepository.findById(utilisateurId);
 
             // Rechargé depuis la base à chaque requête (pas seulement à la connexion) : un compte
             // suspendu par l'admin perd donc l'accès immédiatement, même avec un jeton encore valide.
+            // Les rôles sont également recalculés pour qu'une nouvelle spécialisation
+            // (vendeur/chauffeur) soit utilisable sans se déconnecter.
             if (utilisateur.isPresent() && !utilisateur.get().isSuspendu()) {
+                List<String> roles = userDetailsService.resoudreRoles(utilisateur.get());
                 UserPrincipal principal = new UserPrincipal(utilisateur.get(), roles, null);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());

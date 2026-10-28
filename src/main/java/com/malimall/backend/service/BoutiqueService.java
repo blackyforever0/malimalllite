@@ -39,6 +39,9 @@ public class BoutiqueService {
 
     @Transactional
     public Boutique creer(Long utilisateurId, BoutiqueRequest req) {
+        if (!CategoriesCatalogue.estCategorieBoutiqueValide(req.categorie())) {
+            throw new IllegalArgumentException("Choisissez une catégorie de boutique valide");
+        }
         Vendeur vendeur = vendeurRepository.findByUtilisateurId(utilisateurId)
                 .orElseThrow(() -> new IllegalStateException("Il faut être vendeur (POST /api/moi/devenir-vendeur) pour créer une boutique"));
 

@@ -26,7 +26,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Parcours MotoTaxi complet sur H2 : estimation du prix, demande (fonds
- * gelés), acceptation par un chauffeur Telimani, fin de course (règlement),
+ * gelés), acceptation, prise en charge, arrivée signalée, confirmation par
+ * le passager (règlement),
  * notation — et les refus attendus (véhicule sans passagers, annulation).
  * Même convention que ParcoursMarketIntegrationTest : un scénario qui lève
  * une exception attendue est un @Test à part.
@@ -93,7 +94,7 @@ class CourseServiceIntegrationTest {
     }
 
     @Test
-    void parcoursComplet_demandeAcceptationFinEtNotation() {
+    void parcoursComplet_lePassagerConfirmeLaFinEtLeReglement() {
         CourseResponse demandee = courseService.demander(clientId, "Hippodrome", "ACI 2000", TypeVehicule.TELIMANI);
         int prix = demandee.prixMmc();
         assertThat(demandee.statut()).isEqualTo(StatutCourse.DEMANDEE);
@@ -106,7 +107,13 @@ class CourseServiceIntegrationTest {
         assertThat(acceptee.statut()).isEqualTo(StatutCourse.ACCEPTEE);
         assertThat(acceptee.chauffeurNom()).isEqualTo("Moussa Konaté");
 
-        CourseResponse terminee = courseService.terminer(demandee.id(), chauffeurTelimaniId);
+        CourseResponse enCours = courseService.prendreEnCharge(demandee.id(), chauffeurTelimaniId);
+        assertThat(enCours.statut()).isEqualTo(StatutCourse.EN_COURS);
+        CourseResponse arrivee = courseService.signalerArrivee(demandee.id(), chauffeurTelimaniId);
+        assertThat(arrivee.statut()).isEqualTo(StatutCourse.ARRIVEE);
+        assertThatThrownBy(() -> courseService.confirmerArrivee(demandee.id(), chauffeurTelimaniId))
+                .isInstanceOf(com.malimall.backend.exception.AccesRefuseException.class);
+        CourseResponse terminee = courseService.confirmerArrivee(demandee.id(), clientId);
         assertThat(terminee.statut()).isEqualTo(StatutCourse.TERMINEE);
 
         int commission = Math.round(prix * 0.08f);
@@ -119,6 +126,27 @@ class CourseServiceIntegrationTest {
         assertThat(notee.note()).isEqualTo(4);
         assertThat(courseService.mesCoursesClient(clientId)).hasSize(1);
         assertThat(courseService.mesCoursesChauffeur(chauffeurTelimaniId)).hasSize(1);
+    }
+
+    @Test
+    void confirmerArrivee_refuseAvantLeSignalementDuChauffeur() {
+        CourseResponse demandee = courseService.demander(clientId, "Hippodrome", "ACI 2000", TypeVehicule.TELIMANI);
+        courseService.accepter(demandee.id(), chauffeurTelimaniId);
+        courseService.prendreEnCharge(demandee.id(), chauffeurTelimaniId);
+
+        assertThatThrownBy(() -> courseService.confirmerArrivee(demandee.id(), clientId))
+                .isInstanceOf(TransitionStatutInvalideException.class);
+    }
+
+    @Test
+    void confirmerArrivee_refuseLeChauffeurMemeApresArriveeSignalee() {
+        CourseResponse demandee = courseService.demander(clientId, "Hippodrome", "ACI 2000", TypeVehicule.TELIMANI);
+        courseService.accepter(demandee.id(), chauffeurTelimaniId);
+        courseService.prendreEnCharge(demandee.id(), chauffeurTelimaniId);
+        courseService.signalerArrivee(demandee.id(), chauffeurTelimaniId);
+
+        assertThatThrownBy(() -> courseService.confirmerArrivee(demandee.id(), chauffeurTelimaniId))
+                .isInstanceOf(com.malimall.backend.exception.AccesRefuseException.class);
     }
 
     @Test

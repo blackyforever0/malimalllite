@@ -2,7 +2,9 @@
 
 Backend du parcours **Market** de MaliMall : catalogue, panier multi-produits,
 commande, livraison à deux codes (retrait + livraison), portefeuille MMC et
-commission plateforme. Java 21, Spring Boot 3.3.4, PostgreSQL, Flyway, JWT.
+commission plateforme. Il gère également les courses MotoTaxi, les rôles
+vendeur/chauffeur et les catégories de produits liées aux boutiques.
+Java 21, Spring Boot 3.3.4, PostgreSQL, Flyway, JWT.
 
 Ce code a été écrit et relu attentivement (imports, cohérence des noms de
 champs, requêtes Spring Data, transactions JPA), mais **n'a pas encore été
@@ -30,6 +32,14 @@ Flyway applique automatiquement `V1__init.sql` (schéma) puis
 
 Documentation vivante : http://localhost:8080/swagger-ui.html — cliquer sur
 "Authorize" avec le token JWT renvoyé par `POST /api/auth/connexion`.
+
+### Cycle d'une course MotoTaxi
+
+Après `POST /api/courses/{id}/accepter`, le chauffeur signale la prise en
+charge avec `POST /api/courses/{id}/prise-en-charge`, puis l'arrivée avec
+`POST /api/courses/{id}/signaler-arrivee`. Seul le passager peut confirmer
+l'arrivée avec `POST /api/courses/{id}/confirmer-arrivee` ; le paiement est
+alors réglé et la course passe à `TERMINEE`.
 
 ## Configurer Supabase depuis zéro (base de données + photos)
 

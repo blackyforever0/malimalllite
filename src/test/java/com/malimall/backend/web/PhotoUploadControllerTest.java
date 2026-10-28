@@ -74,13 +74,13 @@ class PhotoUploadControllerTest {
         MvcResult produitResult = mockMvc.perform(post("/api/boutiques/{id}/produits", boutiqueId)
                         .header("Authorization", "Bearer " + tokenVendeurA)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ProduitRequest("Pagne", "desc", 1500, 10, "Mode", null))))
+                        .content(objectMapper.writeValueAsString(new ProduitRequest("Pagne", "desc", 1500, 10, "Vêtements", null))))
                 .andExpect(status().isOk())
                 .andReturn();
         produitId = objectMapper.readTree(produitResult.getResponse().getContentAsString()).get("id").asLong();
     }
 
-    /** Inscription -> devenir-vendeur -> reconnexion (le rôle VENDEUR n'apparaît qu'au prochain jeton). */
+    /** Le jeton créé à l'inscription doit rester valable après l'ajout du rôle vendeur. */
     private String inscrireEtDevenirVendeur(String telephone, String email) throws Exception {
         InscriptionRequest inscription = new InscriptionRequest("Test", "Vendeur", telephone, email, "motdepasse1");
         MvcResult inscriptionResult = mockMvc.perform(post("/api/auth/inscription")
@@ -92,13 +92,7 @@ class PhotoUploadControllerTest {
 
         mockMvc.perform(post("/api/moi/devenir-vendeur").header("Authorization", "Bearer " + tokenClient))
                 .andExpect(status().isOk());
-
-        MvcResult connexionResult = mockMvc.perform(post("/api/auth/connexion")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"telephone\":\"" + telephone + "\",\"motDePasse\":\"motdepasse1\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-        return objectMapper.readTree(connexionResult.getResponse().getContentAsString()).get("token").asText();
+        return tokenClient;
     }
 
     @Test
@@ -121,6 +115,15 @@ class PhotoUploadControllerTest {
                         .header("Authorization", "Bearer " + tokenVendeurA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.imageUrl").value(URL_FALSE));
+    }
+
+    @Test
+    void refuserSousCategorieQuiNeCorrespondPasALaBoutique() throws Exception {
+        mockMvc.perform(post("/api/boutiques/{id}/produits", boutiqueId)
+                        .header("Authorization", "Bearer " + tokenVendeurA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ProduitRequest("Écouteurs", "desc", 2000, 5, "Audio", null))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

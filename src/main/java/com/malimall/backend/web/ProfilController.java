@@ -18,9 +18,8 @@ import java.util.Map;
 
 /**
  * Un même Utilisateur peut cumuler les spécialisations Client/Vendeur/
- * Chauffeur. NB : le JWT en cours ne se met pas à jour tout seul après un
- * appel ici — le nouveau rôle apparaît au prochain /api/auth/connexion,
- * limitation documentée et acceptable pour ce lot.
+ * Chauffeur. Les rôles effectifs sont recalculés sur chaque requête
+ * authentifiée ; aucune reconnexion n'est nécessaire après ces appels.
  */
 @RestController
 @RequestMapping("/api/moi")

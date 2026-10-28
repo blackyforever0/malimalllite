@@ -73,9 +73,20 @@ public class CourseController {
     }
 
     @PreAuthorize("hasRole('CHAUFFEUR')")
-    @PostMapping("/{id}/terminer")
-    public CourseResponse terminer(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long id) {
-        return courseService.terminer(id, principal.getId());
+    @PostMapping("/{id}/prise-en-charge")
+    public CourseResponse prendreEnCharge(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long id) {
+        return courseService.prendreEnCharge(id, principal.getId());
+    }
+
+    @PreAuthorize("hasRole('CHAUFFEUR')")
+    @PostMapping("/{id}/signaler-arrivee")
+    public CourseResponse signalerArrivee(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long id) {
+        return courseService.signalerArrivee(id, principal.getId());
+    }
+
+    @PostMapping("/{id}/confirmer-arrivee")
+    public CourseResponse confirmerArrivee(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long id) {
+        return courseService.confirmerArrivee(id, principal.getId());
     }
 
     @PostMapping("/{id}/annuler")

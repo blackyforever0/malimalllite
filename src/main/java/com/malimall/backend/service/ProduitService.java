@@ -73,6 +73,17 @@ public class ProduitService {
         if (!boutique.getProprietaire().getId().equals(vendeur.getId())) {
             throw new AccesRefuseException("Cette boutique ne vous appartient pas");
         }
+        List<String> sousCategories = CategoriesCatalogue.sousCategories(boutique.getCategorie());
+        if (sousCategories.isEmpty()) {
+            throw new IllegalStateException("La boutique doit avoir une catégorie valide avant d'ajouter un produit");
+        }
+        String categorieProduit = req.categorie();
+        if (categorieProduit == null || categorieProduit.isBlank()) {
+            categorieProduit = sousCategories.getFirst();
+        }
+        if (!sousCategories.contains(categorieProduit)) {
+            throw new IllegalArgumentException("La sous-catégorie choisie ne correspond pas à la catégorie de la boutique");
+        }
 
         Produit produit = Produit.builder()
                 .boutique(boutique)
@@ -80,7 +91,7 @@ public class ProduitService {
                 .description(req.description())
                 .prixMmc(req.prixMmc())
                 .stock(req.stock())
-                .categorie(req.categorie())
+                .categorie(categorieProduit)
                 .poidsKg(req.poidsKg() != null ? req.poidsKg() : java.math.BigDecimal.ONE)
                 .actif(true)
                 .build();

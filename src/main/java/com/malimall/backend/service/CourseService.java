@@ -114,7 +114,10 @@ public class CourseService {
         Utilisateur client = utilisateurRepository.findById(clientUtilisateurId)
                 .orElseThrow(() -> new RessourceIntrouvableException("Utilisateur introuvable"));
         boolean dejaEnCours = courseRepository.findByClientIdOrderByDateDemandeDesc(clientUtilisateurId).stream()
-                .anyMatch(c -> c.getStatut() == StatutCourse.DEMANDEE || c.getStatut() == StatutCourse.ACCEPTEE);
+                .anyMatch(c -> c.getStatut() == StatutCourse.DEMANDEE
+                        || c.getStatut() == StatutCourse.ACCEPTEE
+                        || c.getStatut() == StatutCourse.EN_COURS
+                        || c.getStatut() == StatutCourse.ARRIVEE);
         if (dejaEnCours) {
             throw new TransitionStatutInvalideException("Vous avez déjà une course en cours");
         }
@@ -198,29 +201,57 @@ public class CourseService {
         return CourseMapper.toResponse(courseRepository.save(course));
     }
 
-    /** Fin de course : débit du client, crédit du chauffeur, commission plateforme. */
     @Transactional
-    public CourseResponse terminer(Long courseId, Long chauffeurUtilisateurId) {
+    public CourseResponse prendreEnCharge(Long courseId, Long chauffeurUtilisateurId) {
         Course course = charger(courseId);
         if (course.getChauffeur() == null
                 || !course.getChauffeur().getUtilisateur().getId().equals(chauffeurUtilisateurId)) {
             throw new AccesRefuseException("Cette course ne vous est pas attribuée");
         }
         if (course.getStatut() != StatutCourse.ACCEPTEE) {
-            throw new TransitionStatutInvalideException("Cette course n'est pas en cours");
+            throw new TransitionStatutInvalideException("Cette course ne peut pas encore être démarrée");
+        }
+        course.setStatut(StatutCourse.EN_COURS);
+        return CourseMapper.toResponse(courseRepository.save(course));
+    }
+
+    @Transactional
+    public CourseResponse signalerArrivee(Long courseId, Long chauffeurUtilisateurId) {
+        Course course = charger(courseId);
+        if (course.getChauffeur() == null
+                || !course.getChauffeur().getUtilisateur().getId().equals(chauffeurUtilisateurId)) {
+            throw new AccesRefuseException("Cette course ne vous est pas attribuée");
+        }
+        if (course.getStatut() != StatutCourse.EN_COURS) {
+            throw new TransitionStatutInvalideException("Le passager doit d'abord être pris en charge");
+        }
+        course.setStatut(StatutCourse.ARRIVEE);
+        return CourseMapper.toResponse(courseRepository.save(course));
+    }
+
+    /** Le passager confirme l'arrivée avant le règlement de la course. */
+    @Transactional
+    public CourseResponse confirmerArrivee(Long courseId, Long clientUtilisateurId) {
+        Course course = charger(courseId);
+        if (!course.getClient().getId().equals(clientUtilisateurId)) {
+            throw new AccesRefuseException("Seul le passager peut confirmer cette course");
+        }
+        if (course.getStatut() != StatutCourse.ARRIVEE) {
+            throw new TransitionStatutInvalideException("Le chauffeur n'a pas encore signalé son arrivée");
         }
         int prix = course.getPrixMmc();
         int commission = Math.round(prix * (float) properties.commission().taux());
         int revenuChauffeur = prix - commission;
         Long clientId = course.getClient().getId();
+        Long chauffeurId = course.getChauffeur().getUtilisateur().getId();
         Long plateformeId = plateformeUtilisateurId();
 
         portefeuilleService.debiter(clientId, prix);
-        portefeuilleService.crediter(chauffeurUtilisateurId, revenuChauffeur);
+        portefeuilleService.crediter(chauffeurId, revenuChauffeur);
         portefeuilleService.crediter(plateformeId, commission);
 
         ecrire(clientId, TypeOperation.COURSE_PAIEMENT, prix, course.getId());
-        ecrire(chauffeurUtilisateurId, TypeOperation.COURSE_REVENU, revenuChauffeur, course.getId());
+        ecrire(chauffeurId, TypeOperation.COURSE_REVENU, revenuChauffeur, course.getId());
         ecrire(plateformeId, TypeOperation.COMMISSION, commission, course.getId());
 
         course.setStatut(StatutCourse.TERMINEE);

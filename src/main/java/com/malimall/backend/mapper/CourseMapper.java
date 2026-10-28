@@ -35,6 +35,8 @@ public final class CourseMapper {
                 course.getDateAcceptation(),
                 course.getDateFin(),
                 course.getStatut() == com.malimall.backend.entity.enums.StatutCourse.ACCEPTEE
+                        || course.getStatut() == com.malimall.backend.entity.enums.StatutCourse.EN_COURS
+                        || course.getStatut() == com.malimall.backend.entity.enums.StatutCourse.ARRIVEE
                         ? com.malimall.backend.dto.PositionDto.recente(chauffeur) : null,
                 course.getItinerairePolyline());
     }
