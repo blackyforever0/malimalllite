@@ -3,10 +3,13 @@ package com.malimall.backend.service;
 import com.malimall.backend.dto.CommandeDtos.CommandeResponse;
 import com.malimall.backend.entity.Chauffeur;
 import com.malimall.backend.entity.Commande;
+import com.malimall.backend.entity.LigneCommande;
 import com.malimall.backend.entity.Vendeur;
+import com.malimall.backend.entity.enums.StatutCommande;
 import com.malimall.backend.entity.enums.StatutLivraison;
 import com.malimall.backend.exception.AccesRefuseException;
 import com.malimall.backend.exception.RessourceIntrouvableException;
+import com.malimall.backend.exception.TransitionStatutInvalideException;
 import com.malimall.backend.mapper.CommandeMapper;
 import com.malimall.backend.repository.ChauffeurRepository;
 import com.malimall.backend.repository.CommandeRepository;
@@ -17,10 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Lecture seule sur les Commandes : détail (avec contrôle d'accès) et listes
- * filtrées par rôle du demandeur. Volontairement séparé de
- * {@link LivraisonService} (transitions d'état) et {@link PanierService}
- * (checkout) — une responsabilité par service.
+ * Lecture des Commandes et annulation acheteur avant la prise en charge.
+ * Volontairement séparé de {@link LivraisonService} (transitions de livraison)
+ * et {@link PanierService} (checkout).
  *
  * Le mapping vers CommandeResponse est fait ICI, à l'intérieur de méthodes
  * @Transactional(readOnly = true) — jamais dans le contrôleur — parce que
@@ -35,13 +37,44 @@ public class CommandeService {
     private final CommandeRepository commandeRepository;
     private final VendeurRepository vendeurRepository;
     private final ChauffeurRepository chauffeurRepository;
+    private final PortefeuilleService portefeuilleService;
 
     public CommandeService(CommandeRepository commandeRepository,
                             VendeurRepository vendeurRepository,
-                            ChauffeurRepository chauffeurRepository) {
+                            ChauffeurRepository chauffeurRepository,
+                            PortefeuilleService portefeuilleService) {
         this.commandeRepository = commandeRepository;
         this.vendeurRepository = vendeurRepository;
         this.chauffeurRepository = chauffeurRepository;
+        this.portefeuilleService = portefeuilleService;
+    }
+
+    @Transactional
+    public CommandeResponse annuler(Long commandeId, Long acheteurUtilisateurId) {
+        Commande commande = commandeRepository.findByIdForUpdate(commandeId)
+                .orElseThrow(() -> new RessourceIntrouvableException("Commande introuvable : " + commandeId));
+        if (!commande.getAcheteur().getId().equals(acheteurUtilisateurId)) {
+            throw new AccesRefuseException("Cette commande n'appartient pas à cet acheteur");
+        }
+        boolean chauffeurNonAssigne = commande.getChauffeur() == null
+                && commande.getStatutLivraison() == StatutLivraison.EN_ATTENTE_LIVREUR;
+        boolean retraitNonConfirme = commande.isRetraitParClient()
+                && commande.getChauffeur() == null
+                && commande.getStatut() == StatutCommande.CONFIRMEE;
+        if (commande.getStatut() != StatutCommande.CONFIRMEE
+                || (!chauffeurNonAssigne && !retraitNonConfirme)
+                || commande.isSignalee()) {
+            throw new TransitionStatutInvalideException(
+                    "Cette commande ne peut plus être annulée après l'acceptation du livreur ou la remise au vendeur");
+        }
+
+        for (LigneCommande ligne : commande.getLignes()) {
+            ligne.getProduit().setStock(ligne.getProduit().getStock() + ligne.getQuantite());
+        }
+        portefeuilleService.debloquer(acheteurUtilisateurId, commande.montantTotalAvecLivraison());
+        commande.setStatut(StatutCommande.ANNULEE);
+        commande.setStatutLivraison(null);
+        return CommandeMapper.toResponse(commandeRepository.save(commande), acheteurUtilisateurId, false);
     }
 
     @Transactional(readOnly = true)

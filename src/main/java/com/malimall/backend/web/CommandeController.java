@@ -35,6 +35,11 @@ public class CommandeController {
         return commandeService.obtenir(id, principal.getId(), principal.hasRole("ROLE_ADMIN"));
     }
 
+    @PostMapping("/{id}/annuler")
+    public CommandeResponse annuler(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long id) {
+        return commandeService.annuler(id, principal.getId());
+    }
+
     /** role=acheteur (défaut) | vendeur | chauffeur — filtre les commandes qui concernent l'appelant sous ce rôle. */
     @GetMapping
     public List<CommandeResponse> mesCommandes(@AuthenticationPrincipal UserPrincipal principal,
@@ -66,6 +71,13 @@ public class CommandeController {
                                             @PathVariable Long id,
                                             @Valid @RequestBody ScannerCodeRequest req) {
         return livraisonService.scannerCodeRetrait(id, principal.getId(), req.code());
+    }
+
+    @PreAuthorize("hasRole('CHAUFFEUR')")
+    @PostMapping("/{id}/en-route")
+    public CommandeResponse signalerEnRoute(@AuthenticationPrincipal UserPrincipal principal,
+                                             @PathVariable Long id) {
+        return livraisonService.signalerEnRoute(id, principal.getId());
     }
 
     @PostMapping("/{id}/noter-livreur")

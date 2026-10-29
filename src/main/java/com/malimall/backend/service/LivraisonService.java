@@ -70,13 +70,14 @@ public class LivraisonService {
 
     @Transactional
     public CommandeResponse assignerChauffeur(Long commandeId, Long chauffeurUtilisateurId) {
-        Commande commande = charger(commandeId);
+        Commande commande = chargerPourModification(commandeId);
         Chauffeur chauffeur = chauffeurRepository.findByUtilisateurId(chauffeurUtilisateurId)
                 .orElseThrow(() -> new RessourceIntrouvableException("Profil chauffeur introuvable"));
         if (!chauffeur.isDisponible()) {
             throw new TransitionStatutInvalideException("Ce chauffeur n'est pas disponible actuellement");
         }
-        if (commande.getStatutLivraison() != StatutLivraison.EN_ATTENTE_LIVREUR) {
+        if (commande.getStatut() != StatutCommande.CONFIRMEE
+                || commande.getStatutLivraison() != StatutLivraison.EN_ATTENTE_LIVREUR) {
             throw new TransitionStatutInvalideException("Cette commande a déjà un livreur assigné");
         }
         Vehicule vehicule = chauffeur.getVehicule();
@@ -105,6 +106,19 @@ public class LivraisonService {
         }
         commande.setStatutLivraison(StatutLivraison.RECUPEREE);
         commande.setDateRetrait(Instant.now());
+        commande = commandeRepository.save(commande);
+        return CommandeMapper.toResponse(commande, chauffeurUtilisateurId, false);
+    }
+
+    @Transactional
+    public CommandeResponse signalerEnRoute(Long commandeId, Long chauffeurUtilisateurId) {
+        Commande commande = chargerPourModification(commandeId);
+        verifierChauffeurAssigne(commande, chauffeurUtilisateurId);
+        if (commande.getStatutLivraison() != StatutLivraison.RECUPEREE) {
+            throw new TransitionStatutInvalideException(
+                    "Le colis doit être récupéré chez le vendeur avant le départ vers l'acheteur");
+        }
+        commande.setStatutLivraison(StatutLivraison.EN_ROUTE);
         commande = commandeRepository.save(commande);
         return CommandeMapper.toResponse(commande, chauffeurUtilisateurId, false);
     }
@@ -169,7 +183,7 @@ public class LivraisonService {
      */
     @Transactional
     public CommandeResponse confirmerRetraitClient(Long commandeId, Long vendeurUtilisateurId, String code) {
-        Commande commande = charger(commandeId);
+        Commande commande = chargerPourModification(commandeId);
         if (!commande.isRetraitParClient()) {
             throw new TransitionStatutInvalideException("Cette commande n'est pas en retrait sur place");
         }
@@ -266,6 +280,11 @@ public class LivraisonService {
 
     private Commande charger(Long commandeId) {
         return commandeRepository.findById(commandeId)
+                .orElseThrow(() -> new RessourceIntrouvableException("Commande introuvable : " + commandeId));
+    }
+
+    private Commande chargerPourModification(Long commandeId) {
+        return commandeRepository.findByIdForUpdate(commandeId)
                 .orElseThrow(() -> new RessourceIntrouvableException("Commande introuvable : " + commandeId));
     }
 

@@ -1,6 +1,7 @@
 package com.malimall.backend.web;
 
 import com.malimall.backend.dto.ProfilDtos.DevenirChauffeurRequest;
+import com.malimall.backend.dto.CatalogueDtos.BoutiqueRequest;
 import com.malimall.backend.security.UserPrincipal;
 import com.malimall.backend.service.ProfilService;
 import jakarta.validation.Valid;
@@ -32,9 +33,12 @@ public class ProfilController {
     }
 
     @PostMapping("/devenir-vendeur")
-    public ResponseEntity<Map<String, Long>> devenirVendeur(@AuthenticationPrincipal UserPrincipal principal) {
-        var vendeur = profilService.devenirVendeur(principal.getId());
-        return ResponseEntity.ok(Map.of("vendeurId", vendeur.getId()));
+    public ResponseEntity<Map<String, Long>> devenirVendeur(@AuthenticationPrincipal UserPrincipal principal,
+                                                              @Valid @RequestBody BoutiqueRequest req) {
+        var activation = profilService.devenirVendeur(principal.getId(), req);
+        return ResponseEntity.ok(Map.of(
+                "vendeurId", activation.vendeur().getId(),
+                "boutiqueId", activation.boutique().getId()));
     }
 
     @PostMapping("/devenir-chauffeur")

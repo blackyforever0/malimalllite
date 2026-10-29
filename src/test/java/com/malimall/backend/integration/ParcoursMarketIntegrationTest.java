@@ -1,5 +1,6 @@
 package com.malimall.backend.integration;
 
+import com.malimall.backend.dto.CatalogueDtos.BoutiqueRequest;
 import com.malimall.backend.dto.CommandeDtos.CommandeResponse;
 import com.malimall.backend.dto.PanierDtos.PanierResponse;
 import com.malimall.backend.entity.Boutique;
@@ -32,6 +33,7 @@ import com.malimall.backend.service.CommandeService;
 import com.malimall.backend.service.LivraisonService;
 import com.malimall.backend.service.PanierService;
 import com.malimall.backend.service.PortefeuilleService;
+import com.malimall.backend.service.ProfilService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,6 +89,7 @@ class ParcoursMarketIntegrationTest {
     @Autowired private PanierService panierService;
     @Autowired private CommandeService commandeService;
     @Autowired private LivraisonService livraisonService;
+    @Autowired private ProfilService profilService;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private SignalementRepository signalementRepository;
 
@@ -362,5 +365,76 @@ class ParcoursMarketIntegrationTest {
         Chauffeur chauffeur = chauffeurRepository.findByUtilisateurId(chauffeurUtilisateurId).orElseThrow();
         assertThat(chauffeur.getNombreNotes()).isEqualTo(1);
         assertThat(chauffeur.getNoteMoyenne()).isEqualByComparingTo("3.0");
+    }
+
+    @Test
+    void annulerCommande_avantAssignationLibereLesFondsEtRemetLeStock() {
+        panierService.ajouterLigne(acheteurId, produitId, 1);
+        CommandeResponse commande = panierService.validerPanier(acheteurId).get(0);
+
+        CommandeResponse annulee = commandeService.annuler(commande.id(), acheteurId);
+
+        assertThat(annulee.statut()).isEqualTo(StatutCommande.ANNULEE);
+        assertThat(annulee.statutLivraison()).isNull();
+        assertThat(portefeuilleService.obtenirPourUtilisateur(acheteurId).getSoldeGeleMmc()).isZero();
+        assertThat(produitRepository.findById(produitId).orElseThrow().getStock()).isEqualTo(40);
+        assertThat(commandeService.commandesDisponibles(chauffeurUtilisateurId))
+                .extracting(CommandeResponse::id)
+                .doesNotContain(commande.id());
+    }
+
+    @Test
+    void annulerCommande_refuseApresAssignationDuChauffeur() {
+        CommandeResponse commande = creerCommandeAssigneeAuChauffeur();
+
+        assertThatThrownBy(() -> commandeService.annuler(commande.id(), acheteurId))
+                .isInstanceOf(TransitionStatutInvalideException.class)
+                .hasMessageContaining("ne peut plus être annulée");
+    }
+
+    @Test
+    void annulerCommande_enRetraitBoutiqueLibereLesFondsEtRemetLeStock() {
+        panierService.ajouterLigne(acheteurId, produitId, 1);
+        CommandeResponse commande =
+                panierService.validerPanier(acheteurId, null, null, null, true).get(0);
+
+        CommandeResponse annulee = commandeService.annuler(commande.id(), acheteurId);
+
+        assertThat(annulee.statut()).isEqualTo(StatutCommande.ANNULEE);
+        assertThat(portefeuilleService.obtenirPourUtilisateur(acheteurId).getSoldeGeleMmc()).isZero();
+        assertThat(produitRepository.findById(produitId).orElseThrow().getStock()).isEqualTo(40);
+    }
+
+    @Test
+    void signalerEnRoute_nestPossibleQuapresLeRetrait() {
+        CommandeResponse commande = creerCommandeAssigneeAuChauffeur();
+        String codeRetrait =
+                commandeService.obtenir(commande.id(), vendeurUtilisateurId, false).codeRetrait();
+        livraisonService.scannerCodeRetrait(commande.id(), chauffeurUtilisateurId, codeRetrait);
+
+        CommandeResponse enRoute =
+                livraisonService.signalerEnRoute(commande.id(), chauffeurUtilisateurId);
+
+        assertThat(enRoute.statutLivraison()).isEqualTo(StatutLivraison.EN_ROUTE);
+    }
+
+    @Test
+    void devenirVendeur_creeLaBoutiqueDansLaMemeOperation() {
+        var activation = profilService.devenirVendeur(
+                acheteurId,
+                new BoutiqueRequest("Atelier Aïcha", "Créations artisanales", "Artisanat", "Hamdallaye"));
+
+        assertThat(vendeurRepository.findByUtilisateurId(acheteurId))
+                .isPresent()
+                .get()
+                .extracting(Vendeur::getId)
+                .isEqualTo(activation.vendeur().getId());
+        assertThat(boutiqueRepository.findByProprietaireId(activation.vendeur().getId()))
+                .singleElement()
+                .satisfies(boutique -> {
+                    assertThat(boutique.getId()).isEqualTo(activation.boutique().getId());
+                    assertThat(boutique.getNom()).isEqualTo("Atelier Aïcha");
+                    assertThat(boutique.getCategorie()).isEqualTo("Artisanat");
+                });
     }
 }

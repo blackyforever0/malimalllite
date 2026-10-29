@@ -1,12 +1,15 @@
 package com.malimall.backend.service;
 
 import com.malimall.backend.dto.ProfilDtos.DevenirChauffeurRequest;
+import com.malimall.backend.dto.CatalogueDtos.BoutiqueRequest;
+import com.malimall.backend.entity.Boutique;
 import com.malimall.backend.entity.Chauffeur;
 import com.malimall.backend.entity.Utilisateur;
 import com.malimall.backend.entity.Vehicule;
 import com.malimall.backend.entity.Vendeur;
 import com.malimall.backend.exception.RessourceIntrouvableException;
 import com.malimall.backend.repository.ChauffeurRepository;
+import com.malimall.backend.repository.BoutiqueRepository;
 import com.malimall.backend.repository.UtilisateurRepository;
 import com.malimall.backend.repository.VehiculeRepository;
 import com.malimall.backend.repository.VendeurRepository;
@@ -22,27 +25,42 @@ public class ProfilService {
     private final ChauffeurRepository chauffeurRepository;
     private final VehiculeRepository vehiculeRepository;
     private final SupabaseStorageService supabaseStorageService;
+    private final BoutiqueRepository boutiqueRepository;
 
     public ProfilService(UtilisateurRepository utilisateurRepository,
                           VendeurRepository vendeurRepository,
                           ChauffeurRepository chauffeurRepository,
                           VehiculeRepository vehiculeRepository,
-                          SupabaseStorageService supabaseStorageService) {
+                          SupabaseStorageService supabaseStorageService,
+                          BoutiqueRepository boutiqueRepository) {
         this.utilisateurRepository = utilisateurRepository;
         this.vendeurRepository = vendeurRepository;
         this.chauffeurRepository = chauffeurRepository;
         this.vehiculeRepository = vehiculeRepository;
         this.supabaseStorageService = supabaseStorageService;
+        this.boutiqueRepository = boutiqueRepository;
     }
 
     @Transactional
-    public Vendeur devenirVendeur(Long utilisateurId) {
-        if (vendeurRepository.findByUtilisateurId(utilisateurId).isPresent()) {
-            throw new IllegalStateException("Cet utilisateur est déjà vendeur");
+    public ActivationVendeur devenirVendeur(Long utilisateurId, BoutiqueRequest req) {
+        if (!CategoriesCatalogue.estCategorieBoutiqueValide(req.categorie())) {
+            throw new IllegalArgumentException("Choisissez une catégorie de boutique valide");
         }
         Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)
                 .orElseThrow(() -> new RessourceIntrouvableException("Utilisateur introuvable"));
-        return vendeurRepository.save(Vendeur.builder().utilisateur(utilisateur).build());
+        Vendeur vendeur = vendeurRepository.findByUtilisateurId(utilisateurId)
+                .orElseGet(() -> vendeurRepository.save(Vendeur.builder().utilisateur(utilisateur).build()));
+        Boutique boutique = boutiqueRepository.findByProprietaireId(vendeur.getId()).stream()
+                .findFirst()
+                .orElseGet(() -> boutiqueRepository.save(Boutique.builder()
+                        .proprietaire(vendeur)
+                        .nom(req.nom())
+                        .description(req.description())
+                        .categorie(req.categorie())
+                        .quartier(req.quartier())
+                        .certifiee(false)
+                        .build()));
+        return new ActivationVendeur(vendeur, boutique);
     }
 
     @Transactional
@@ -78,4 +96,6 @@ public class ProfilService {
         utilisateur.setImageUrl(url);
         return utilisateurRepository.save(utilisateur);
     }
+
+    public record ActivationVendeur(Vendeur vendeur, Boutique boutique) {}
 }

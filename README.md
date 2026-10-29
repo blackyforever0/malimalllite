@@ -6,6 +6,14 @@ commission plateforme. Il gère également les courses MotoTaxi, les rôles
 vendeur/chauffeur et les catégories de produits liées aux boutiques.
 Java 21, Spring Boot 3.3.4, PostgreSQL, Flyway, JWT.
 
+L'activation vendeur se fait avec la création de la boutique en une seule
+opération (`POST /api/moi/devenir-vendeur`, avec nom, catégorie, quartier et
+description facultative). Une commande confirmée reste annulable par son
+acheteur jusqu'à l'assignation d'un chauffeur ; l'annulation libère les fonds
+réservés et remet les produits en stock (`POST /api/commandes/{id}/annuler`).
+Pour un retrait en boutique, l'acheteur peut annuler jusqu'à la confirmation
+de remise par le vendeur.
+
 Ce code a été écrit et relu attentivement (imports, cohérence des noms de
 champs, requêtes Spring Data, transactions JPA), mais **n'a pas encore été
 compilé ni exécuté dans cet environnement** : le bac à sable cloud dans
